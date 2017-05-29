@@ -27,13 +27,15 @@ repositories {
     mavenCentral()
     jcenter()
     repositories { maven { url "http://dl.bintray.com/jetbrains/teamcity-rest-client" } }
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
     testCompile group: 'junit', name: 'junit', version: '4.11'
     compile "net.gpedro.integrations.slack:slack-webhook:1.2.1"
-    compile "org.jetbrains.teamcity:teamcity-rest-client:0.1.57"
+//    compile "org.jetbrains.teamcity:teamcity-rest-client:0.1.57"
+    compile 'com.github.goodwinnk:teamcity-rest-client:d22a9fc73fffd3973fc0d1bca1bb84a77316a5a4'
 }
 
 compileKotlin {
