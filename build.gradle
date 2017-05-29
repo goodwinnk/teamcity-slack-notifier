@@ -19,7 +19,7 @@ mainClassName = "com.nk.tsn.MainKt"
 run {
     if (project.hasProperty('args')) {
         //noinspection GroovyAssignabilityCheck
-        args project.args.split()
+        args project.args.split(',')
     }
 }
 
