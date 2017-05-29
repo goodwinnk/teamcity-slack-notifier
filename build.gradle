@@ -17,9 +17,9 @@ apply plugin: 'application'
 
 mainClassName = "com.nk.tsn.MainKt"
 run {
-    if (System.getProperty("execArgs") != null) {
+    if (project.hasProperty('args')) {
         //noinspection GroovyAssignabilityCheck
-        args System.getProperty("execArgs").split()
+        args project.args.split()
     }
 }
 
