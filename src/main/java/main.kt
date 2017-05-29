@@ -9,7 +9,7 @@ import org.jetbrains.teamcity.rest.BuildConfigurationId
 import org.jetbrains.teamcity.rest.TeamCityInstance
 
 data class Settings(
-        var number: String = "1.1.4-dev-490",
+        var number: String = "1.1.4-dev-492",
         var buildConfigurationId: String = "bt345",
         var branches: String = "<default>",
         var slackUrl: String = "https://hooks.slack.com/services/{icoming-webhook-url}"
@@ -54,8 +54,9 @@ fun prepareNotification(buildNumber: String, builds: List<Build>): SlackMessage?
 
     if (currentBuild.status == previousBuild.status) {
         // Nothing interesting
+        println("Same status")
         return null
     }
 
-    return createSlackMessage(currentBuild.status.toString())
+    return createSlackMessage(currentBuild.statusText)
 }
