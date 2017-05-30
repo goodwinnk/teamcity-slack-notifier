@@ -48,17 +48,13 @@ fun main(args: Array<String>) {
 fun Build.createSlackNotification(configuration: BuildConfiguration): SlackMessage {
     val changes = fetchChanges()
     val authors = changes.map { it.username }.distinct().joinToString(" ")
+    val title = "$buildNumber ${configuration.name} ${branch.name}"
 
     val attachment = SlackAttachment().apply {
-        setFallback("Build notification for $buildNumber")
-        setTitle(buildNumber)
+        setFallback("$title ${if (status == BuildStatus.SUCCESS) "Failed" else "Fixed"}")
+        setTitle(title)
         setTitleLink("https://teamcity.jetbrains.com/viewLog.html?buildId=${id.stringId}")
-        setAuthorName("${configuration.name} ${branch.name}")
-        setText(fetchStatusText())
-        addFields(SlackField().apply {
-            setTitle("Authors")
-            setValue(authors)
-        })
+        setText("${fetchStatusText()}\n$authors")
         setColor(if (status == BuildStatus.SUCCESS) "#36a64f" else "#a6364f")
     }
 
