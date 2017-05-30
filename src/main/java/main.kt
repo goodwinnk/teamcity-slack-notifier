@@ -21,6 +21,7 @@ fun main(args: Array<String>) {
         with(args) {
             getOrNull(0)?.let { slackUrl = it }
             getOrNull(1)?.let { number = it }
+            getOrNull(2)?.let { buildConfigurationId = it }
         }
     }
     println(settings)
