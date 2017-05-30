@@ -3,9 +3,11 @@
 package com.nk.tsn
 
 import net.gpedro.integrations.slack.SlackApi
+import net.gpedro.integrations.slack.SlackAttachment
 import net.gpedro.integrations.slack.SlackMessage
 import org.jetbrains.teamcity.rest.Build
 import org.jetbrains.teamcity.rest.BuildConfigurationId
+import org.jetbrains.teamcity.rest.BuildStatus
 import org.jetbrains.teamcity.rest.TeamCityInstance
 
 data class Settings(
@@ -39,8 +41,20 @@ fun main(args: Array<String>) {
     SlackApi(settings.slackUrl).call(slackMessage)
 }
 
-fun createSlackMessage(statusText: String): SlackMessage {
-    return SlackMessage().setText(statusText)
+fun Build.createSlackNotification(): SlackMessage {
+    val changes = fetchChanges()
+    val authors = changes.map { it.username }.distinct().joinToString(" ")
+
+    val attachment = SlackAttachment().apply {
+        setFallback("Build notification for $buildNumber")
+        setTitle(buildNumber)
+        setTitleLink("https://teamcity.jetbrains.com/viewLog.html?buildId=${id.stringId}")
+        setAuthorName(authors)
+        setText(statusText)
+        setColor(if (status == BuildStatus.SUCCESS) "#36a64f" else "#a6364f")
+    }
+
+    return SlackMessage("").addAttachments(attachment)
 }
 
 fun prepareNotification(buildNumber: String, builds: List<Build>): SlackMessage? {
@@ -58,5 +72,5 @@ fun prepareNotification(buildNumber: String, builds: List<Build>): SlackMessage?
         return null
     }
 
-    return createSlackMessage(currentBuild.statusText)
+    return currentBuild.createSlackNotification()
 }
