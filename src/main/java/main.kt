@@ -4,17 +4,16 @@ package com.nk.tsn
 
 import net.gpedro.integrations.slack.SlackApi
 import net.gpedro.integrations.slack.SlackAttachment
+import net.gpedro.integrations.slack.SlackField
 import net.gpedro.integrations.slack.SlackMessage
-import org.jetbrains.teamcity.rest.Build
-import org.jetbrains.teamcity.rest.BuildConfigurationId
-import org.jetbrains.teamcity.rest.BuildStatus
-import org.jetbrains.teamcity.rest.TeamCityInstance
+import org.jetbrains.teamcity.rest.*
 
 data class Settings(
-        var number: String = "1.1.4-dev-492",
+        var number: String = "1.1.4-dev-518",
         var buildConfigurationId: String = "bt345",
         var branches: String = "<default>",
-        var slackUrl: String = "https://hooks.slack.com/services/{icoming-webhook-url}"
+        var slackUrl: String = "https://hooks.slack.com/services/{icoming-webhook-url}",
+        val serverUrl: String = "https://teamcity.jetbrains.com"
 )
 
 fun main(args: Array<String>) {
@@ -26,7 +25,8 @@ fun main(args: Array<String>) {
     }
     println(settings)
 
-    val builds = TeamCityInstance.guestAuth("https://teamcity.jetbrains.com")
+    val teamCityInstance = TeamCityInstance.guestAuth(settings.serverUrl)
+    val builds = teamCityInstance
             .builds()
             .fromConfiguration(BuildConfigurationId(settings.buildConfigurationId))
             .limitResults(5)
@@ -35,13 +35,16 @@ fun main(args: Array<String>) {
             .list()
     println(builds)
 
-    val slackMessage = prepareNotification(settings.number, builds)
+    val buildConfiguration = teamCityInstance.buildConfiguration(BuildConfigurationId(settings.buildConfigurationId))
+    println(buildConfiguration.name)
+
+    val slackMessage = prepareNotification(settings.number, buildConfiguration, builds)
     println(slackMessage)
 
     SlackApi(settings.slackUrl).call(slackMessage)
 }
 
-fun Build.createSlackNotification(): SlackMessage {
+fun Build.createSlackNotification(configuration: BuildConfiguration): SlackMessage {
     val changes = fetchChanges()
     val authors = changes.map { it.username }.distinct().joinToString(" ")
 
@@ -49,15 +52,19 @@ fun Build.createSlackNotification(): SlackMessage {
         setFallback("Build notification for $buildNumber")
         setTitle(buildNumber)
         setTitleLink("https://teamcity.jetbrains.com/viewLog.html?buildId=${id.stringId}")
-        setAuthorName(authors)
+        setAuthorName("${configuration.name} ${branch.name}")
         setText(fetchStatusText())
+        addFields(SlackField().apply {
+            setTitle("Authors")
+            setValue(authors)
+        })
         setColor(if (status == BuildStatus.SUCCESS) "#36a64f" else "#a6364f")
     }
 
     return SlackMessage("").addAttachments(attachment)
 }
 
-fun prepareNotification(buildNumber: String, builds: List<Build>): SlackMessage? {
+fun prepareNotification(buildNumber: String, buildConfiguration: BuildConfiguration, builds: List<Build>): SlackMessage? {
     val index = builds.indexOfFirst { it.buildNumber == buildNumber }
     if (index == -1) return null
 
@@ -72,5 +79,5 @@ fun prepareNotification(buildNumber: String, builds: List<Build>): SlackMessage?
         return null
     }
 
-    return currentBuild.createSlackNotification()
+    return currentBuild.createSlackNotification(buildConfiguration)
 }
