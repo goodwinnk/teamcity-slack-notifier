@@ -50,7 +50,7 @@ fun Build.createSlackNotification(): SlackMessage {
         setTitle(buildNumber)
         setTitleLink("https://teamcity.jetbrains.com/viewLog.html?buildId=${id.stringId}")
         setAuthorName(authors)
-        setText(statusText)
+        setText(fetchStatusText())
         setColor(if (status == BuildStatus.SUCCESS) "#36a64f" else "#a6364f")
     }
 
