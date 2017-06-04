@@ -2,28 +2,23 @@
 
 package com.nk.tsn
 
+import com.nk.tsn.args.initFromArgs
 import net.gpedro.integrations.slack.SlackApi
 import net.gpedro.integrations.slack.SlackAttachment
-import net.gpedro.integrations.slack.SlackField
 import net.gpedro.integrations.slack.SlackMessage
 import org.jetbrains.teamcity.rest.*
 
 data class Settings(
-        var number: String = "1.1.4-dev-518",
-        var buildConfigurationId: String = "bt345",
-        var branches: String = "<default>",
-        var slackUrl: String = "https://hooks.slack.com/services/{icoming-webhook-url}",
+        val slackWebHookUrl: String, // = "https://hooks.slack.com/services/{icoming-webhook-url}"
+        val number: String = "1.1.4-dev-518",
+        val buildConfigurationId: String = "bt345",
+        val branches: String = "<default>",
+        val slackChannel: String = "@nk",
         val serverUrl: String = "https://teamcity.jetbrains.com"
 )
 
 fun main(args: Array<String>) {
-    val settings = Settings().apply {
-        with(args) {
-            getOrNull(0)?.let { slackUrl = it }
-            getOrNull(1)?.let { number = it }
-            getOrNull(2)?.let { buildConfigurationId = it }
-        }
-    }
+    val settings = initFromArgs(Settings::class, args)
     println(settings)
 
     val teamCityInstance = TeamCityInstance.guestAuth(settings.serverUrl)
@@ -42,7 +37,7 @@ fun main(args: Array<String>) {
     val slackMessage = prepareNotification(settings.number, buildConfiguration, builds)
     println(slackMessage)
 
-    SlackApi(settings.slackUrl).call(slackMessage)
+    SlackApi(settings.slackWebHookUrl).call(slackMessage)
 }
 
 fun Build.createSlackNotification(configuration: BuildConfiguration): SlackMessage {
