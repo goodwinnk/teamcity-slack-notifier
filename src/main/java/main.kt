@@ -52,35 +52,38 @@ private fun checkBuildLongFailedEvent(settings: Settings) {
             .limitResults(1)
             .latest() ?: return
 
-//    val finishDate: Instant = lastSuccessfulBuild.fetchFinishDate().toInstant()
-//    val now = LocalDateTime.now()
-//
-//    val daysWithoutSuccessful = Duration.between(now, finishDate).toDays()
-//    if (daysWithoutSuccessful <= settings.triggerAfterDays) {
-//        println("Only $daysWithoutSuccessful days have passed. Will trigger after ${settings.triggerAfterDays} days.")
-//        return
-//    }
+    val finishDate: Date = lastSuccessfulBuild.fetchFinishDate()
+    val now = Date()
 
+    val diff = Math.abs(now.getTime() - finishDate.getTime())
+    val daysWithoutSuccessful = (diff / (24 * 60 * 60 * 1000)).toInt()
+
+    if (daysWithoutSuccessful <= settings.triggerAfterDays) {
+        println("Only $daysWithoutSuccessful days have passed. Will trigger after ${settings.triggerAfterDays} days.")
+        return
+    }
+
+    // TODO: sinceBuild locator
     val failedBuilds = teamCityInstance
             .builds()
             .fromConfiguration(BuildConfigurationId(settings.buildConfigurationId))
             .withBranch(settings.branches)
             .withStatus(BuildStatus.FAILURE)
-            .limitResults(100)
+            .limitResults(50)
             .list()
 
-    println("FailedBuilds: ${failedBuilds.size}")
+    val lastSuccessfulId = lastSuccessfulBuild.id.stringId.toInt()
+    val firstFailedBuild = failedBuilds.takeWhile { it.id.stringId.toInt() > lastSuccessfulId }.last()
 
-    // TODO: sinceBuild locator
-    val firstFailedBuild = failedBuilds.last { it.id.stringId > lastSuccessfulBuild.id.stringId }
-
-    println("${lastSuccessfulBuild.id.stringId} ${firstFailedBuild.id.stringId}")
+    println("SUCCESS: ${lastSuccessfulBuild.buildNumber} FAILED: ${firstFailedBuild.buildNumber}")
 
     val buildConfiguration = teamCityInstance.buildConfiguration(BuildConfigurationId(settings.buildConfigurationId))
     println(buildConfiguration.name)
 
-    val slackNotification = firstFailedBuild.createSlackNotification(buildConfiguration)
+    val slackNotification = firstFailedBuild.createLongFailedSlackNotification(buildConfiguration, daysWithoutSuccessful)
     println(slackNotification)
+
+    SlackApi(settings.slackWebHookUrl).call(slackNotification)
 }
 
 private fun checkBuildStatusChangedEvent(settings: Settings) {
@@ -101,6 +104,29 @@ private fun checkBuildStatusChangedEvent(settings: Settings) {
     println(slackMessage)
 
     SlackApi(settings.slackWebHookUrl).call(slackMessage)
+}
+
+fun Build.createLongFailedSlackNotification(configuration: BuildConfiguration, numberOfDays: Int): SlackMessage {
+    val changes = fetchChanges()
+    val authors = changes.map { it.username }.distinct().joinToString(" ")
+    val fire = when {
+        numberOfDays == 1 -> ":fire:"
+        numberOfDays > 1 -> ":fire:" + " :fire:".repeat(numberOfDays - 1)
+        else -> " "
+    }
+
+    val title = "$buildNumber ${configuration.name} ${branch.name}"
+    val message = "The build is failed for $numberOfDays days!$fire"
+
+    val attachment = SlackAttachment().apply {
+        setFallback("$title $message")
+        setTitle(title)
+        setTitleLink("https://teamcity.jetbrains.com/viewLog.html?buildId=${id.stringId}")
+        setText("$message\n$authors")
+        setColor(if (status == BuildStatus.SUCCESS) "#36a64f" else "#a6364f")
+    }
+
+    return SlackMessage("").addAttachments(attachment)
 }
 
 fun Build.createSlackNotification(configuration: BuildConfiguration): SlackMessage {
