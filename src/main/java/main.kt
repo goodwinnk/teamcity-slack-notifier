@@ -83,7 +83,7 @@ private fun checkBuildLongFailedEvent(settings: Settings) {
     val slackNotification = firstFailedBuild.createLongFailedSlackNotification(buildConfiguration, daysWithoutSuccessful)
     println(slackNotification)
 
-    SlackApi(settings.slackWebHookUrl).call(slackNotification)
+    SlackApi(settings.slackWebHookUrl).call(slackNotification.setChannel(settings.slackChannel))
 }
 
 private fun checkBuildStatusChangedEvent(settings: Settings) {
