@@ -12,6 +12,7 @@ fun checkBuildStatusChangedEvent(settings: Settings) {
             .fromConfiguration(BuildConfigurationId(settings.buildConfigurationId))
             .limitResults(5)
             .withAnyStatus()
+            .withAnyFailedToStart()
             .withBranch(settings.branches)
             .list()
     println(builds)
