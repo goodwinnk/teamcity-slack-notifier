@@ -28,9 +28,9 @@ fun main(args: Array<String>) {
     val settings = initFromArgs(Settings::class, args)
     println(settings)
 
-    if (settings.longFailedEnabled || settings.longFailedForce) {
-        checkBuildLongFailedEvent(settings)
-    }
+//    if (settings.longFailedEnabled || settings.longFailedForce) {
+//        checkBuildLongFailedEvent(settings)
+//    }
 
     if (settings.statusChangeEnabled || settings.statusChangeForce) {
         checkBuildStatusChangedEvent(settings)
