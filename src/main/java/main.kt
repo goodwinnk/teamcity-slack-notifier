@@ -6,7 +6,7 @@ import com.nk.tsn.args.initFromArgs
 
 data class Settings(
         val slackWebHookUrl: String, // = "https://hooks.slack.com/services/{icoming-webhook-url}"
-        val slackChannel: String?, // = @nk
+        val slackChannel: String? = null, // = @nk
 
         val serverUrl: String = "https://teamcity.jetbrains.com",
         val branches: String = "<default>",
