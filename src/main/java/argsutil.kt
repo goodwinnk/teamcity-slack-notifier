@@ -32,7 +32,12 @@ fun <T : Any> initFromArgs(klass: KClass<T>, args: Array<String>): T {
     for (parameter in parameters) {
         val value = argsMap[parameter.name]
         when {
-            value != null -> paramsMapping[parameter] = value
+            value != null -> {
+                paramsMapping[parameter] = when (parameter.type.toString()) {
+                    "kotlin.Boolean" -> value.toBoolean()
+                    else -> value
+                }
+            }
             !parameter.isOptional ->
                 throw IllegalArgumentException("No value passed for non-option parameter '${parameter.name}' in $klass")
         }

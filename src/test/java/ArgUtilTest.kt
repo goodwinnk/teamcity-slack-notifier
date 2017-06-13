@@ -17,4 +17,12 @@ class ArgUtilTest {
         Assertions.assertNotNull(args)
         Assertions.assertEquals("value", args.a)
     }
+
+    @Test fun booleanArgument() {
+        data class Simple(val a: Boolean, val b: Boolean)
+        val args = initFromArgs(Simple::class, arrayOf("a=false", "b=true"))
+        Assertions.assertNotNull(args)
+        Assertions.assertEquals(false, args.a)
+        Assertions.assertEquals(true, args.b)
+    }
 }
