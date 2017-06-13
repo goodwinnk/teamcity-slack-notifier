@@ -27,17 +27,14 @@ fun checkBuildLongFailedEvent(settings: Settings) {
         return
     }
 
-    // TODO: sinceBuild locator
-    val failedBuilds = teamCityInstance
+    val firstFailedBuild = teamCityInstance
             .builds()
             .fromConfiguration(BuildConfigurationId(settings.buildConfigurationId))
             .withBranch(settings.branches)
+            .withSinceBuild(teamCityInstance.builds().withAnyStatus().withId(lastSuccessfulBuild.id))
             .withStatus(BuildStatus.FAILURE)
-            .limitResults(50)
-            .list()
-
-    val lastSuccessfulId = lastSuccessfulBuild.id.stringId.toInt()
-    val firstFailedBuild = failedBuilds.takeWhile { it.id.stringId.toInt() > lastSuccessfulId }.last()
+            .limitResults(1)
+            .list().firstOrNull()!!
 
     println("SUCCESS: ${lastSuccessfulBuild.buildNumber} FAILED: ${firstFailedBuild.buildNumber}")
 

@@ -6,42 +6,82 @@ import net.gpedro.integrations.slack.SlackMessage
 import org.jetbrains.teamcity.rest.*
 
 fun checkBuildStatusChangedEvent(settings: Settings) {
-    val teamCityInstance = TeamCityInstance.guestAuth(settings.serverUrl)
-    val builds = teamCityInstance
-            .builds()
-            .fromConfiguration(BuildConfigurationId(settings.buildConfigurationId))
-            .limitResults(5)
-            .withAnyStatus()
-            .withAnyFailedToStart()
-            .withBranch(settings.branches)
-            .list()
-    println(builds)
+    val (currentBuild, previousBuild) = fetchBuildWithPreviousByFinishDate(
+            settings.number, settings.serverUrl, settings.buildConfigurationId, settings.branches)
 
-    val buildConfiguration = teamCityInstance.buildConfiguration(BuildConfigurationId(settings.buildConfigurationId))
+    if (currentBuild == null) {
+        println("Can't find build with number: ${settings.number}")
+        return
+    }
+    println("Current build: $currentBuild")
+
+    if (previousBuild == null) {
+        println("Can't find build previous build for number: ${settings.number}")
+        return
+    }
+    println("Previous build: $previousBuild")
+
+    if (!isChangeStatusEventTriggered(currentBuild, previousBuild)) {
+        return
+    }
+
+    val teamCityInstance = TeamCityInstance.guestAuth(settings.serverUrl)
+    val buildConfigurationId = BuildConfigurationId(settings.buildConfigurationId)
+
+    val buildConfiguration = teamCityInstance.buildConfiguration(buildConfigurationId)
     println(buildConfiguration.name)
 
-    val slackMessage = prepareNotification(settings.number, buildConfiguration, builds)
+    val slackMessage = currentBuild.createSlackNotification(buildConfiguration)
     println(slackMessage)
 
     SlackApi(settings.slackWebHookUrl).call(slackMessage)
 }
 
-private fun prepareNotification(buildNumber: String, buildConfiguration: BuildConfiguration, builds: List<Build>): SlackMessage? {
-    val index = builds.indexOfFirst { it.buildNumber == buildNumber }
-    if (index == -1) return null
-
-    if (index + 1 >= builds.size) return null
-
-    val currentBuild = builds[index]
-    val previousBuild = builds[index + 1]
+fun isChangeStatusEventTriggered(currentBuild: Build, previousBuild: Build): Boolean {
+    if (currentBuild.id.stringId.toLong() < previousBuild.id.stringId.toLong()) {
+        println("Current build has probably started earlier but finished after more recent build. Don't report " +
+                "status change as it's outdated. A notification might be already sent for more recent build.\n" +
+                "$currentBuild")
+        return false
+    }
 
     if (currentBuild.status == previousBuild.status) {
         // Nothing interesting
-        println("Same status")
-        return null
+        println("Status of builds hasn't changed: ${currentBuild.status}\n" +
+                "$currentBuild")
+        return false
     }
 
-    return currentBuild.createSlackNotification(buildConfiguration)
+    return true
+}
+
+fun fetchBuildWithPreviousByFinishDate(
+        currentNumber: String, teamcityUrl: String, configurationId: String, branch: String): Pair<Build?, Build?> {
+    val teamCityInstance = TeamCityInstance.guestAuth(teamcityUrl)
+    val buildConfigurationId = BuildConfigurationId(configurationId)
+
+    val currentBuild = teamCityInstance.builds()
+            .fromConfiguration(buildConfigurationId)
+            .withBranch(branch)
+            .withAnyStatus().withAnyFailedToStart()
+            .limitResults(1)
+            .withNumber(currentNumber)
+            .list().firstOrNull()
+
+    @Suppress("FoldInitializerAndIfToElvis")
+    if (currentBuild == null) {
+        return (null to null)
+    }
+
+    val previousBuild = teamCityInstance.builds()
+            .fromConfiguration(buildConfigurationId)
+            .withBranch(branch)
+            .limitResults(1)
+            .withAnyStatus().withAnyFailedToStart()
+            .withFinishDateQuery(beforeBuildQuery(teamCityInstance.builds().withAnyStatus().withId(currentBuild.id)))
+            .list().firstOrNull()
+
+    return currentBuild to previousBuild
 }
 
 private fun Build.createSlackNotification(configuration: BuildConfiguration): SlackMessage {

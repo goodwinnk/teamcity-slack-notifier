@@ -35,7 +35,7 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
     compile "net.gpedro.integrations.slack:slack-webhook:1.2.1"
 //    compile "org.jetbrains.teamcity:teamcity-rest-client:0.1.57"
-    compile 'com.github.goodwinnk:teamcity-rest-client:ec821d3ba9c24b81f38437a9e0a38067c05d0512'
+    compile 'com.github.goodwinnk:teamcity-rest-client:1bf908eb218ff81f31653192b45d008825d1152c'
 
     testCompile 'org.junit.jupiter:junit-jupiter-api:5.0.0-M4'
 }
