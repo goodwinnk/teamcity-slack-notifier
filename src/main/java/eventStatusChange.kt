@@ -6,23 +6,32 @@ import net.gpedro.integrations.slack.SlackMessage
 import org.jetbrains.teamcity.rest.*
 
 fun checkBuildStatusChangedEvent(settings: Settings) {
+    val slackMessage = prepareStatusChangeMessage(settings) ?: return
+    println(slackMessage)
+
+    SlackApi(settings.slackWebHookUrl).call(slackMessage)
+}
+
+fun prepareStatusChangeMessage(settings: Settings): SlackMessage? {
     val (currentBuild, previousBuild) = fetchBuildWithPreviousByFinishDate(
             settings.number, settings.serverUrl, settings.buildConfigurationId, settings.branches)
 
     if (currentBuild == null) {
         println("Can't find build with number: ${settings.number}")
-        return
+        return null
     }
     println("Current build: $currentBuild")
 
-    if (previousBuild == null) {
-        println("Can't find build previous build for number: ${settings.number}")
-        return
-    }
-    println("Previous build: $previousBuild")
+    if (!settings.statusChangeForce) {
+        if (previousBuild == null) {
+            println("Can't find previous build for number: ${settings.number}")
+            return null
+        }
+        println("Previous build: $previousBuild")
 
-    if (!isChangeStatusEventTriggered(currentBuild, previousBuild)) {
-        return
+        if (!isChangeStatusEventTriggered(currentBuild, previousBuild, settings.statusChangeOnSuccess)) {
+            return null
+        }
     }
 
     val teamCityInstance = TeamCityInstance.guestAuth(settings.serverUrl)
@@ -31,13 +40,10 @@ fun checkBuildStatusChangedEvent(settings: Settings) {
     val buildConfiguration = teamCityInstance.buildConfiguration(buildConfigurationId)
     println(buildConfiguration.name)
 
-    val slackMessage = currentBuild.createSlackNotification(buildConfiguration)
-    println(slackMessage)
-
-    SlackApi(settings.slackWebHookUrl).call(slackMessage)
+    return currentBuild.createSlackNotification(buildConfiguration)
 }
 
-fun isChangeStatusEventTriggered(currentBuild: Build, previousBuild: Build): Boolean {
+fun isChangeStatusEventTriggered(currentBuild: Build, previousBuild: Build, statusChangeOnSuccess: Boolean): Boolean {
     if (currentBuild.id.stringId.toLong() < previousBuild.id.stringId.toLong()) {
         println("Current build has probably started earlier but finished after more recent build. Don't report " +
                 "status change as it's outdated. A notification might be already sent for more recent build.\n" +
@@ -49,6 +55,11 @@ fun isChangeStatusEventTriggered(currentBuild: Build, previousBuild: Build): Boo
         // Nothing interesting
         println("Status of builds hasn't changed: ${currentBuild.status}\n" +
                 "$currentBuild")
+        return false
+    }
+
+    if (!statusChangeOnSuccess && currentBuild.status == BuildStatus.SUCCESS) {
+        println("Canceled because of statusChangeOnSuccess setting")
         return false
     }
 

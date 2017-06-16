@@ -16,6 +16,7 @@ data class Settings(
         // For status change event
         val statusChangeEnabled: Boolean = true,
         val statusChangeForce: Boolean = false,
+        val statusChangeOnSuccess: Boolean = true,
 
         // For long failed build event
         val longFailedEnabled: Boolean = true,

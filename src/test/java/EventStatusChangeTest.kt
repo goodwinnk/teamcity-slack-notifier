@@ -1,7 +1,9 @@
 package com.nk.tsn.test
 
+import com.nk.tsn.Settings
 import com.nk.tsn.fetchBuildWithPreviousByFinishDate
 import com.nk.tsn.isChangeStatusEventTriggered
+import com.nk.tsn.prepareStatusChangeMessage
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
@@ -37,15 +39,18 @@ class EventStatusChangeTest {
 
     @Test
     fun testEventTriggered() {
-        fun test(currentNumber: String, isTriggered: Boolean) {
+        fun test(currentNumber: String, isTriggered: Boolean, sendEventOnSuccess: Boolean = true) {
             val (current, previous) = fetchBuildWithPreviousByFinishDate(currentNumber,
                     "https://teamcity.jetbrains.com", "bt345", "<default>")
 
-            Assertions.assertEquals(isTriggered, isChangeStatusEventTriggered(current!!, previous!!))
+            Assertions.assertEquals(isTriggered, isChangeStatusEventTriggered(current!!, previous!!, sendEventOnSuccess))
         }
 
         // Normal success
         test("1.1.4-dev-726", true)
+
+        // Normal success muted with option
+        test("1.1.4-dev-726", false, false)
 
         // Normal failed
         test("1.1.4-dev-725", true)
@@ -64,6 +69,16 @@ class EventStatusChangeTest {
 
         // Not triggered for long failed build because when it's finished there's more recent build already
         test("1.1.4-dev-688", false)
+    }
 
+    @Test
+    fun testForceOption() {
+        // Success after success
+        Assertions.assertNotNull(
+                prepareStatusChangeMessage(Settings(slackWebHookUrl = "", number = "1.1.4-dev-836", statusChangeForce = true)))
+
+        // Failure after failure
+        Assertions.assertNotNull(
+                prepareStatusChangeMessage(Settings(slackWebHookUrl = "", number = "1.1.4-dev-831", statusChangeForce = true)))
     }
 }
