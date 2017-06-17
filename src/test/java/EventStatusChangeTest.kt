@@ -75,10 +75,13 @@ class EventStatusChangeTest {
     fun testForceOption() {
         // Success after success
         Assertions.assertNotNull(
-                prepareStatusChangeMessage(Settings(slackWebHookUrl = "", number = "1.1.4-dev-836", statusChangeForce = true)))
+                prepareStatusChangeMessage(Settings(
+                        slackWebHookUrl = "", number = "1.1.4-dev-836",
+                        statusChangeForce = true, counter = "1", ownConfigurationId = "fake")))
 
         // Failure after failure
         Assertions.assertNotNull(
-                prepareStatusChangeMessage(Settings(slackWebHookUrl = "", number = "1.1.4-dev-831", statusChangeForce = true)))
+                prepareStatusChangeMessage(Settings(slackWebHookUrl = "", number = "1.1.4-dev-831",
+                        statusChangeForce = true, counter = "1", ownConfigurationId = "fake")))
     }
 }
