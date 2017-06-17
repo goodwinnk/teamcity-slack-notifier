@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 
 class ArgUtilTest {
     @Test fun simpleNoArgs() {
-        class SimpleNoArgs()
+        class SimpleNoArgs
         val args = initFromArgs(SimpleNoArgs::class, arrayOf("no matter"))
         Assertions.assertNotNull(args)
     }
@@ -24,5 +24,14 @@ class ArgUtilTest {
         Assertions.assertNotNull(args)
         Assertions.assertEquals(false, args.a)
         Assertions.assertEquals(true, args.b)
+    }
+
+    @Test fun intArgument() {
+        data class Simple(val a: Int, val b: Int? = null, val c: Int?)
+        val args = initFromArgs(Simple::class, arrayOf("a=12", "c=13"))
+        Assertions.assertNotNull(args)
+        Assertions.assertEquals(12, args.a)
+        Assertions.assertEquals(null, args.b)
+        Assertions.assertEquals(13, args.c)
     }
 }

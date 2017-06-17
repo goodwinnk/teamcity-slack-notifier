@@ -28,13 +28,16 @@ fun <T : Any> initFromArgs(klass: KClass<T>, args: Array<String>): T {
     }
 
     val argsMap = buildArgsMap(args)
-    val paramsMapping = HashMap<KParameter, Any>()
+    val paramsMapping = HashMap<KParameter, Any?>()
     for (parameter in parameters) {
         val value = argsMap[parameter.name]
         when {
             value != null -> {
                 paramsMapping[parameter] = when (parameter.type.toString()) {
                     "kotlin.Boolean" -> value.toBoolean()
+                    "kotlin.Boolean?" -> if (value == "null") null else value.toBoolean()
+                    "kotlin.Int" -> value.toInt()
+                    "kotlin.Int?" -> if (value == "null") null else value.toInt()
                     else -> value
                 }
             }
