@@ -28,7 +28,7 @@ data class Settings(
         val longFailedEnabled: Boolean = true,
         val longFailedForce: Boolean = false,
         val longFailedTriggerAfterDays: Int = 3,
-        val longFailedReTriggerAfterDays: Int = 2
+        val longFailedDaysStep: Int = 2
 )
 
 fun main(args: Array<String>) {
