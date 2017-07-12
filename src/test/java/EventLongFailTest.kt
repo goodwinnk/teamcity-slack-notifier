@@ -50,6 +50,36 @@ class EventLongFailTest {
         Assertions.assertEquals("master-dev-696", data.firstFailedBuild.buildNumber)
     }
 
+    @Test fun testIgnoreForcedGreenBuilds() {
+        val settings = LongFailedSettings(
+                serverUrl = "https://teamcity.jetbrains.com",
+                buildConfigurationId = "bt345",
+                branches = "<default>",
+                longFailedTriggerAfterDays = 3,
+                longFailedDaysStep = 2,
+                number = "1.1.4-dev-1360",
+                considerMarkedAsSuccessfulAsFailed = true
+        )
+        val data = prepareBuildLongFailedMessage(settings)
+        Assertions.assertNull(data)
+        Assertions.assertEquals("Exit because of day trigger step. Day passed 4, wait for 3, step 2.", lastLFEMessage)
+    }
+
+    @Test fun testDoNotIgnoreForcedGreenBuilds() {
+        val settings = LongFailedSettings(
+                serverUrl = "https://teamcity.jetbrains.com",
+                buildConfigurationId = "bt345",
+                branches = "<default>",
+                longFailedTriggerAfterDays = 3,
+                longFailedDaysStep = 2,
+                number = "1.1.4-dev-1360",
+                considerMarkedAsSuccessfulAsFailed = false
+        )
+        val data = prepareBuildLongFailedMessage(settings)
+        Assertions.assertNull(data)
+        Assertions.assertEquals("Only 1 days have passed. Will trigger after 3 days.", lastLFEMessage)
+    }
+
     private fun createSettings(number: String, longFailedTriggerAfterDays: Int = 3, longFailedDaysStep: Int = 2): LongFailedSettings {
         return LongFailedSettings(
                 serverUrl = "https://teamcity.jetbrains.com",
@@ -57,7 +87,8 @@ class EventLongFailTest {
                 branches = "<default>",
                 longFailedTriggerAfterDays = longFailedTriggerAfterDays,
                 longFailedDaysStep = longFailedDaysStep,
-                number = number
+                number = number,
+                considerMarkedAsSuccessfulAsFailed = true
         )
     }
 }

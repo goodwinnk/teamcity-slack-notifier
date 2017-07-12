@@ -27,6 +27,7 @@ data class Settings(
         // For long failed build event
         val longFailedEnabled: Boolean = true,
         val longFailedForce: Boolean = false,
+        val longFailedConsiderMarkedAsSuccessfulAsFailed: Boolean = true,
         val longFailedTriggerAfterDays: Int = 3,
         val longFailedDaysStep: Int = 2
 )

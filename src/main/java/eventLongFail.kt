@@ -13,6 +13,7 @@ fun checkBuildLongFailedEvent(settings: Settings) {
                     settings.serverUrl,
                     settings.buildConfigurationId,
                     settings.branches,
+                    settings.longFailedConsiderMarkedAsSuccessfulAsFailed,
                     settings.longFailedTriggerAfterDays,
                     settings.longFailedDaysStep)) ?: return
 
@@ -27,6 +28,7 @@ class LongFailedSettings(
         val serverUrl: String,
         val buildConfigurationId: String,
         val branches: String,
+        val considerMarkedAsSuccessfulAsFailed: Boolean,
         val longFailedTriggerAfterDays: Int,
         val longFailedDaysStep: Int
 )
@@ -59,14 +61,7 @@ fun prepareBuildLongFailedMessage(settings: LongFailedSettings): LongStatusEvent
         return null
     }
 
-    val lastSuccessfulBeforeCurrent = teamCityInstance
-            .builds()
-            .fromConfiguration(buildConfigurationId)
-            .withBranch(settings.branches)
-            .withStatus(BuildStatus.SUCCESS)
-            .withFinishDateQuery(beforeBuildQuery(teamCityInstance.builds().withAnyStatus().withId(currentBuild.id)))
-            .limitResults(1)
-            .latest()
+    val lastSuccessfulBeforeCurrent = findLastSuccessfulBeforeBuild(teamCityInstance, buildConfigurationId, settings, currentBuild)
 
     if (lastSuccessfulBeforeCurrent == null) {
         log("Can't find last successful build for long failed event")
@@ -130,6 +125,29 @@ fun prepareBuildLongFailedMessage(settings: LongFailedSettings): LongStatusEvent
             "first failed: ${firstFailedBuild.buildNumber}, days: $daysWithoutSuccessful")
 
     return LongStatusEventTriggeredData(firstFailedBuild, daysWithoutSuccessful, buildConfiguration)
+}
+
+private fun findLastSuccessfulBeforeBuild(
+        teamCityInstance: TeamCityInstance,
+        buildConfigurationId: BuildConfigurationId, settings: LongFailedSettings, currentBuild: Build): Build? {
+    val foundBuild = teamCityInstance
+            .builds()
+            .fromConfiguration(buildConfigurationId)
+            .withBranch(settings.branches)
+            .withStatus(BuildStatus.SUCCESS)
+            .withFinishDateQuery(beforeBuildQuery(teamCityInstance.builds().withAnyStatus().withId(currentBuild.id)))
+            .limitResults(1)
+            .latest() ?: return null
+
+    if (settings.considerMarkedAsSuccessfulAsFailed) {
+        val status = foundBuild.fetchStatusText().toLowerCase()
+        val badStatuses = listOf("tests failed", "dependency failed", "exit code", "execution timeout", "crashed")
+        if (badStatuses.any { status.contains(it) }) {
+            return findLastSuccessfulBeforeBuild(teamCityInstance, buildConfigurationId, settings, foundBuild)
+        }
+    }
+
+    return foundBuild
 }
 
 private fun createLongFailedSlackNotification(messageData: LongStatusEventTriggeredData) = messageData.firstFailedBuild.run {
